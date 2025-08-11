@@ -1,56 +1,4 @@
-// 天气功能
-    function initWeather() {
-      // 获取用户位置
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(position => {
-          const lat = position.coords.latitude;
-          const lon = position.coords.longitude;
-          fetchWeatherData(lat, lon);
-        }, error => {
-          console.error("无法获取位置信息:", error);
-          document.getElementById('location').textContent = "未知位置";
-          useMockWeatherData();
-        });
-      } else {
-        document.getElementById('location').textContent = "浏览器不支持定位";
-        useMockWeatherData();
-      }
-    }
-
-    function fetchWeatherData(lat, lon) {
-      // 使用Open-Meteo API获取天气数据
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`;
-      
-      fetch(url)
-        .then(response => response.json())
-        .then(data => {
-          const temperature = Math.round(data.current_weather.temperature);
-          const weatherCode = data.current_weather.weathercode;
-          const location = data.timezone.split('/')[1] || '当前城市';
-          
-          // 更新UI
-          document.getElementById('temperature').textContent = `${temperature}°C`;
-          document.getElementById('location').textContent = location;
-          
-          // 根据天气代码设置图标
-          setWeatherIcon(weatherCode, temperature);
-          
-          // 设置古希腊神话提示
-          setMythologyTip(temperature, weatherCode);
-        })
-        .catch(error => {
-          console.error("获取天气数据失败:", error);
-          document.getElementById('location').textContent = "获取失败";
-          useMockWeatherData();
-        });
-    }
-
-    function useMockWeatherData() {
-      // 模拟天气数据
-      const temperature = 22;
-      const weatherCode = 0; // 晴天
-      
-      document.getElementById('<html lang="zh-CN">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
@@ -505,15 +453,14 @@
           .then(r => r.json())
           .then(data => {
             const w = data.current_weather;
-            const temperature = Math.round(w.temperature);
-            document.getElementById('temperature').textContent = `${temperature}°C`;
+            const temp = Math.round(w.temperature);
+            document.getElementById('temperature').textContent = `${temp}°C`;
             document.getElementById('weather-desc').textContent = `风速: ${w.windspeed}km/h`;
-            setWeatherIcon(w.weathercode, temperature);
-            setMythologyTip(temperature, w.weathercode);
+            setWeatherIcon(w.weathercode, temp);
+            setMythologyTip(temp, w.weathercode);
           })
-          .catch(error => {
-            console.error("获取天气数据失败:", error);
-            document.getElementById('location').textContent = "获取失败";
+          .catch(() => {
+            document.getElementById('location').textContent = '获取失败';
           });
       }
 
@@ -525,47 +472,34 @@
             const city = data.address.city || data.address.town || data.address.village || '未知城市';
             document.getElementById('location').textContent = city;
           })
-          .catch(error => {
-            console.error("获取城市信息失败:", error);
+          .catch(() => {
+            document.getElementById('location').textContent = '未知位置';
           });
       }
     }
 
-    // 设置天气图标
     function setWeatherIcon(code, temperature) {
       const iconElement = document.getElementById('weather-icon');
       iconElement.className = 'text-5xl mr-4 float-animation';
       
-      let iconHTML = '';
       if (code === 0) {
-        // 晴天
-        if (temperature > 25) {
-          iconHTML = '<i class="fas fa-sun text-yellow-500"></i>';
-        } else {
-          iconHTML = '<i class="fas fa-sun text-yellow-400"></i>';
-        }
+        iconElement.innerHTML = '<i class="fas fa-sun text-yellow-400"></i>';
       } else if (code < 4) {
-        // 多云
-        iconHTML = '<i class="fas fa-cloud text-fog-400"></i>';
+        iconElement.innerHTML = '<i class="fas fa-cloud text-fog-400"></i>';
       } else if (code < 70) {
-        // 雨天
-        iconHTML = '<i class="fas fa-cloud-rain text-blue-400"></i>';
+        iconElement.innerHTML = '<i class="fas fa-cloud-rain text-blue-400"></i>';
       } else if (code < 80) {
-        // 雪天
-        iconHTML = '<i class="fas fa-snowflake text-blue-100"></i>';
+        iconElement.innerHTML = '<i class="fas fa-snowflake text-blue-100"></i>';
       } else {
-        // 雷暴
-        iconHTML = '<i class="fas fa-bolt text-yellow-500"></i>';
+        iconElement.innerHTML = '<i class="fas fa-bolt text-yellow-500"></i>';
       }
-      
-      iconElement.innerHTML = iconHTML;
     }
 
     function setMythologyTip(temperature, weatherCode) {
       const tipElement = document.getElementById('mythology-tip');
       let tip = '';
 
-      // 根据温度设置古希腊神话提示
+      // 根据温度设置神话提示
       if (temperature >= 35) {
         tip = '🔥 赫菲斯托斯的熔炉正在燃烧！记得多补水降温';
       } else if (temperature >= 30) {
@@ -583,18 +517,12 @@
       }
 
       // 根据天气代码添加特殊提示
-      if (weatherCode >= 51 && weatherCode <= 67) {
-        // 雨天
-        tip = '🌧️ 宙斯正在降下甘露，记得带伞';
-      } else if (weatherCode >= 95 && weatherCode <= 99) {
-        // 雷暴
+      if (weatherCode >= 80) {
         tip = '⚡ 宙斯挥舞着雷电之矛！请注意安全';
-      } else if (weatherCode >= 71 && weatherCode <= 77) {
-        // 雪天
+      } else if (weatherCode >= 70) {
         tip = '❄️ 冬季女神珀耳塞福涅归来了';
-      } else if (weatherCode >= 45 && weatherCode <= 48) {
-        // 雾
-        tip = '🌫️ 伊里斯的面纱笼罩着大地，小心出行';
+      } else if (weatherCode >= 50) {
+        tip = '🌧️ 宙斯正在降下甘露，记得带伞';
       }
 
       // 添加淡入效果
@@ -604,6 +532,8 @@
         tipElement.style.opacity = '1';
       }, 300);
     }
+
+    // 初始化动画效果
     function initAnimations() {
       // 为卡片添加交错动画
       const cards = document.querySelectorAll('.frosted-card');
@@ -650,136 +580,4 @@
         }
       });
       
-      updateTaskCount();
-      
-      function addTask() {
-        const taskText = newTaskInput.value.trim();
-        if (taskText) {
-          const task = {
-            id: Date.now().toString(),
-            text: taskText,
-            completed: false
-          };
-          
-          saveTask(task);
-          renderTask(task);
-          newTaskInput.value = '';
-          updateTaskCount();
-        }
-      }
-      
-      function saveTask(task) {
-        const tasks = getTasksFromStorage();
-        tasks.push(task);
-        localStorage.setItem('todos', JSON.stringify(tasks));
-      }
-      
-      function getTasksFromStorage() {
-        const tasksJson = localStorage.getItem('todos');
-        return tasksJson ? JSON.parse(tasksJson) : [];
-      }
-      
-      function loadTasks() {
-        const tasks = getTasksFromStorage();
-        todoList.innerHTML = '';
-        
-        if (tasks.length === 0) {
-          todoList.innerHTML = `
-            <div class="text-center text-fog-400 text-sm py-8">
-              <i class="fas fa-clipboard-list text-2xl mb-2 block float-animation"></i>
-              暂无待办事项
-            </div>
-          `;
-          return;
-        }
-        
-        tasks.forEach(task => {
-          renderTask(task);
-        });
-      }
-      
-      function renderTask(task) {
-        const taskElement = document.createElement('div');
-        taskElement.className = `flex items-center p-2 rounded-lg hover:bg-fog-50 transition-all duration-300 hover:transform hover:scale-105 ${task.completed ? 'opacity-60' : ''}`;
-        taskElement.dataset.taskId = task.id;
-        
-        taskElement.innerHTML = `
-          <div class="flex items-center flex-1">
-            <input type="checkbox" class="task-checkbox w-4 h-4 rounded border-fog-300 text-fog-600 focus:ring-fog-400 transition-all duration-300" ${task.completed ? 'checked' : ''}>
-            <span class="ml-3 text-sm text-fog-700 transition-all duration-300 ${task.completed ? 'line-through text-fog-400' : ''}">${escapeHTML(task.text)}</span>
-          </div>
-          <button class="delete-task text-fog-400 hover:text-fog-600 p-1 transition-all duration-300 hover:scale-110 interactive-button">
-            <i class="fas fa-times"></i>
-          </button>
-        `;
-        
-        const checkbox = taskElement.querySelector('.task-checkbox');
-        checkbox.addEventListener('change', () => toggleTaskCompletion(task.id));
-        
-        const deleteBtn = taskElement.querySelector('.delete-task');
-        deleteBtn.addEventListener('click', () => deleteTask(task.id));
-        
-        taskElement.classList.add('slide-in');
-        todoList.appendChild(taskElement);
-      }
-      
-      function toggleTaskCompletion(taskId) {
-        const tasks = getTasksFromStorage();
-        const taskIndex = tasks.findIndex(task => task.id === taskId);
-        
-        if (taskIndex !== -1) {
-          tasks[taskIndex].completed = !tasks[taskIndex].completed;
-          localStorage.setItem('todos', JSON.stringify(tasks));
-          
-          const taskElement = todoList.querySelector(`[data-task-id="${taskId}"]`);
-          const taskText = taskElement.querySelector('span');
-          
-          if (tasks[taskIndex].completed) {
-            taskText.classList.add('line-through', 'text-fog-400');
-            taskElement.classList.add('opacity-60');
-          } else {
-            taskText.classList.remove('line-through', 'text-fog-400');
-            taskElement.classList.remove('opacity-60');
-          }
-        }
-      }
-      
-      function deleteTask(taskId) {
-        const tasks = getTasksFromStorage();
-        const updatedTasks = tasks.filter(task => task.id !== taskId);
-        localStorage.setItem('todos', JSON.stringify(updatedTasks));
-        
-        const taskElement = todoList.querySelector(`[data-task-id="${taskId}"]`);
-        if (taskElement) {
-          taskElement.style.transform = 'translateX(-100%)';
-          taskElement.style.opacity = '0';
-          setTimeout(() => {
-            taskElement.remove();
-            updateTaskCount();
-            
-            if (updatedTasks.length === 0) {
-              loadTasks();
-            }
-          }, 300);
-        }
-      }
-      
-      function updateTaskCount() {
-        const tasks = getTasksFromStorage();
-        const activeTasks = tasks.filter(task => !task.completed).length;
-        taskCount.textContent = `${activeTasks}项`;
-      }
-      
-      function escapeHTML(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-      }
-    }
-
-    // 快速笔记功能
-    function initQuickNote() {
-      const noteTextarea = document.getElementById('quick-note');
-      const saveStatus = document.getElementById('save-status');
-      
-      const savedNote = localStorage.
+      updateTask
