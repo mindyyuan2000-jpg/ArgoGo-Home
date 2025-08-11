@@ -1,4 +1,56 @@
-<html lang="zh-CN">
+// 天气功能
+    function initWeather() {
+      // 获取用户位置
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(position => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          fetchWeatherData(lat, lon);
+        }, error => {
+          console.error("无法获取位置信息:", error);
+          document.getElementById('location').textContent = "未知位置";
+          useMockWeatherData();
+        });
+      } else {
+        document.getElementById('location').textContent = "浏览器不支持定位";
+        useMockWeatherData();
+      }
+    }
+
+    function fetchWeatherData(lat, lon) {
+      // 使用Open-Meteo API获取天气数据
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`;
+      
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          const temperature = Math.round(data.current_weather.temperature);
+          const weatherCode = data.current_weather.weathercode;
+          const location = data.timezone.split('/')[1] || '当前城市';
+          
+          // 更新UI
+          document.getElementById('temperature').textContent = `${temperature}°C`;
+          document.getElementById('location').textContent = location;
+          
+          // 根据天气代码设置图标
+          setWeatherIcon(weatherCode, temperature);
+          
+          // 设置古希腊神话提示
+          setMythologyTip(temperature, weatherCode);
+        })
+        .catch(error => {
+          console.error("获取天气数据失败:", error);
+          document.getElementById('location').textContent = "获取失败";
+          useMockWeatherData();
+        });
+    }
+
+    function useMockWeatherData() {
+      // 模拟天气数据
+      const temperature = 22;
+      const weatherCode = 0; // 晴天
+      
+      document.getElementById('<html lang="zh-CN">
 <head>
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
@@ -425,130 +477,95 @@
 
     // 天气功能
     function initWeather() {
-      // OpenWeatherMap API密钥 (你需要注册获取免费密钥)
-      const API_KEY = 'your_api_key_here'; // 请替换为你的API密钥
-      
-      // 获取用户位置
+      // 默认经纬度（北京）
+      let lat = 39.9, lon = 116.4;
+
+      // 获取位置
       if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(position => {
-          const lat = position.coords.latitude;
-          const lon = position.coords.longitude;
-          fetchWeatherData(lat, lon, API_KEY);
-        }, error => {
-          console.error("无法获取位置信息:", error);
-          // 如果无法获取位置，使用北京作为默认城市
-          fetchWeatherByCity('Beijing', API_KEY);
-        });
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            lat = pos.coords.latitude;
+            lon = pos.coords.longitude;
+            getWeather();
+            getCity();
+          },
+          () => {
+            document.getElementById('location').textContent = '北京';
+            getWeather();
+          }
+        );
       } else {
-        document.getElementById('location').textContent = "浏览器不支持定位";
-        fetchWeatherByCity('Beijing', API_KEY);
+        document.getElementById('location').textContent = '北京';
+        getWeather();
+      }
+
+      // 获取天气
+      function getWeather() {
+        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
+          .then(r => r.json())
+          .then(data => {
+            const w = data.current_weather;
+            const temperature = Math.round(w.temperature);
+            document.getElementById('temperature').textContent = `${temperature}°C`;
+            document.getElementById('weather-desc').textContent = `风速: ${w.windspeed}km/h`;
+            setWeatherIcon(w.weathercode, temperature);
+            setMythologyTip(temperature, w.weathercode);
+          })
+          .catch(error => {
+            console.error("获取天气数据失败:", error);
+            document.getElementById('location').textContent = "获取失败";
+          });
+      }
+
+      // 获取城市名
+      function getCity() {
+        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+          .then(r => r.json())
+          .then(data => {
+            const city = data.address.city || data.address.town || data.address.village || '未知城市';
+            document.getElementById('location').textContent = city;
+          })
+          .catch(error => {
+            console.error("获取城市信息失败:", error);
+          });
       }
     }
 
-    function fetchWeatherData(lat, lon, apiKey) {
-      const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=zh_cn`;
-      
-      fetch(url)
-        .then(response => response.json())
-        .then(data => {
-          updateWeatherUI(data);
-        })
-        .catch(error => {
-          console.error("获取天气数据失败:", error);
-          // 如果API失败，使用模拟数据
-          useMockWeatherData();
-        });
-    }
-
-    function fetchWeatherByCity(city, apiKey) {
-      const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric&lang=zh_cn`;
-      
-      fetch(url)
-        .then(response => response.json())
-        .then(data => {
-          updateWeatherUI(data);
-        })
-        .catch(error => {
-          console.error("获取天气数据失败:", error);
-          useMockWeatherData();
-        });
-    }
-
-    function useMockWeatherData() {
-      // 模拟天气数据，用于演示
-      const mockData = {
-        main: {
-          temp: Math.floor(Math.random() * 30) + 5, // 5-35度随机温度
-        },
-        weather: [{
-          main: 'Clear',
-          description: '晴朗',
-          icon: '01d'
-        }],
-        name: '演示城市'
-      };
-      updateWeatherUI(mockData);
-    }
-
-    function updateWeatherUI(data) {
-      const temperature = Math.round(data.main.temp);
-      const weatherMain = data.weather[0].main;
-      const weatherDesc = data.weather[0].description;
-      const cityName = data.name;
-      
-      // 更新基本信息
-      document.getElementById('temperature').textContent = `${temperature}°C`;
-      document.getElementById('location').textContent = cityName;
-      document.getElementById('weather-desc').textContent = weatherDesc;
-      
-      // 设置天气图标
-      setWeatherIcon(weatherMain, temperature);
-      
-      // 设置古希腊神话提示
-      setMythologyTip(temperature, weatherMain);
-    }
-
-    function setWeatherIcon(weatherMain, temperature) {
+    // 设置天气图标
+    function setWeatherIcon(code, temperature) {
       const iconElement = document.getElementById('weather-icon');
       iconElement.className = 'text-5xl mr-4 float-animation';
       
-      // 根据天气类型设置图标和颜色
-      switch(weatherMain.toLowerCase()) {
-        case 'clear':
-          if (temperature > 25) {
-            iconElement.innerHTML = '<i class="fas fa-sun text-yellow-500"></i>';
-          } else {
-            iconElement.innerHTML = '<i class="fas fa-sun text-yellow-400"></i>';
-          }
-          break;
-        case 'clouds':
-          iconElement.innerHTML = '<i class="fas fa-cloud text-fog-400"></i>';
-          break;
-        case 'rain':
-        case 'drizzle':
-          iconElement.innerHTML = '<i class="fas fa-cloud-rain text-blue-500"></i>';
-          break;
-        case 'thunderstorm':
-          iconElement.innerHTML = '<i class="fas fa-bolt text-purple-500"></i>';
-          break;
-        case 'snow':
-          iconElement.innerHTML = '<i class="fas fa-snowflake text-blue-200"></i>';
-          break;
-        case 'mist':
-        case 'fog':
-        case 'haze':
-          iconElement.innerHTML = '<i class="fas fa-smog text-fog-500"></i>';
-          break;
-        default:
-          iconElement.innerHTML = '<i class="fas fa-cloud text-fog-400"></i>';
+      let iconHTML = '';
+      if (code === 0) {
+        // 晴天
+        if (temperature > 25) {
+          iconHTML = '<i class="fas fa-sun text-yellow-500"></i>';
+        } else {
+          iconHTML = '<i class="fas fa-sun text-yellow-400"></i>';
+        }
+      } else if (code < 4) {
+        // 多云
+        iconHTML = '<i class="fas fa-cloud text-fog-400"></i>';
+      } else if (code < 70) {
+        // 雨天
+        iconHTML = '<i class="fas fa-cloud-rain text-blue-400"></i>';
+      } else if (code < 80) {
+        // 雪天
+        iconHTML = '<i class="fas fa-snowflake text-blue-100"></i>';
+      } else {
+        // 雷暴
+        iconHTML = '<i class="fas fa-bolt text-yellow-500"></i>';
       }
+      
+      iconElement.innerHTML = iconHTML;
     }
 
-    function setMythologyTip(temperature, weatherMain) {
+    function setMythologyTip(temperature, weatherCode) {
       const tipElement = document.getElementById('mythology-tip');
       let tip = '';
 
-      // 根据温度和天气设置古希腊神话提示
+      // 根据温度设置古希腊神话提示
       if (temperature >= 35) {
         tip = '🔥 赫菲斯托斯的熔炉正在燃烧！记得多补水降温';
       } else if (temperature >= 30) {
@@ -565,27 +582,19 @@
         tip = '🧊 寒冬之神正在考验凡人的意志';
       }
 
-      // 根据天气类型添加特殊提示
-      switch(weatherMain.toLowerCase()) {
-        case 'rain':
-        case 'drizzle':
-          tip = '🌧️ 宙斯正在降下甘露，记得带伞';
-          break;
-        case 'thunderstorm':
-          tip = '⚡ 宙斯挥舞着雷电之矛！请注意安全';
-          break;
-        case 'snow':
-          tip = '❄️ 冬季女神珀耳塞福涅归来了';
-          break;
-        case 'mist':
-        case 'fog':
-          tip = '🌫️ 伊里斯的面纱笼罩着大地，小心出行';
-          break;
-        case 'clear':
-          if (temperature < 10) {
-            tip = '✨ 夜空女神尼克斯的星辰闪烁';
-          }
-          break;
+      // 根据天气代码添加特殊提示
+      if (weatherCode >= 51 && weatherCode <= 67) {
+        // 雨天
+        tip = '🌧️ 宙斯正在降下甘露，记得带伞';
+      } else if (weatherCode >= 95 && weatherCode <= 99) {
+        // 雷暴
+        tip = '⚡ 宙斯挥舞着雷电之矛！请注意安全';
+      } else if (weatherCode >= 71 && weatherCode <= 77) {
+        // 雪天
+        tip = '❄️ 冬季女神珀耳塞福涅归来了';
+      } else if (weatherCode >= 45 && weatherCode <= 48) {
+        // 雾
+        tip = '🌫️ 伊里斯的面纱笼罩着大地，小心出行';
       }
 
       // 添加淡入效果
