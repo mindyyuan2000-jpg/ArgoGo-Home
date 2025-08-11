@@ -114,58 +114,78 @@
     <div class="w-full md:w-3/10 space-y-6" data-ytextravalue="extra-acmjqxq07">
      <!-- 空白小插件区域 -->
 <!-- 天气区域 -->
-<div class="frosted-card p-5" data-ytindex="0" data-ytoriginindex="0">
+<div class="frosted-card p-5">
   <div class="flex items-center justify-between mb-4">
     <h3 class="text-fog-600 text-sm font-medium flex items-center">
-      <i class="fas fa-cloud mr-2 text-fog-400"></i>
-      当前天气
+      <i class="fas fa-cloud mr-2 text-fog-400"></i>当前天气
     </h3>
-    <span class="text-xs text-fog-400" id="location">
-      获取位置中...
-    </span>
+    <span class="text-xs text-fog-400" id="location">定位中...</span>
   </div>
   <div class="flex items-center justify-center py-2">
-    <div class="text-5xl mr-4" id="weather-icon">
-      <i class="fas fa-cloud text-fog-400"></i>
-    </div>
+    <div class="text-5xl mr-4" id="weather-icon"><i class="fas fa-cloud text-fog-400"></i></div>
     <div class="text-center">
-      <div class="text-3xl font-light text-fog-800" id="temperature">
-        --°C
-      </div>
-      <div class="text-fog-500 text-sm mt-1" id="weather-desc">
-        加载中
-      </div>
+      <div class="text-3xl font-light text-fog-800" id="temperature">--°C</div>
+      <div class="text-fog-500 text-sm mt-1" id="weather-desc">加载中</div>
     </div>
   </div>
 </div>
 
 <script>
-  // 等待页面DOM加载完成
-  document.addEventListener('DOMContentLoaded', function() {
-    // 获取用户所在城市天气（当前使用固定坐标，北京）
-    fetch('https://api.open-meteo.com/v1/forecast?latitude=39.9&longitude=116.4&current_weather=true')
-      .then(response => response.json())
+document.addEventListener('DOMContentLoaded', () => {
+  // 默认经纬度（北京）
+  let lat = 39.9, lon = 116.4;
+
+  // 获取位置
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        lat = pos.coords.latitude;
+        lon = pos.coords.longitude;
+        getWeather();
+        getCity();
+      },
+      () => {
+        document.getElementById('location').textContent = '北京';
+        getWeather();
+      }
+    );
+  } else {
+    document.getElementById('location').textContent = '北京';
+    getWeather();
+  }
+
+  // 获取天气
+  function getWeather() {
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
+      .then(r => r.json())
       .then(data => {
-        const weather = data.current_weather;
-        
-        // 更新位置信息（这里使用固定位置，实际应用中可以通过IP或GPS获取）
-        document.getElementById('location').textContent = '北京市';
-        
-        // 更新温度
-        document.getElementById('temperature').textContent = `${weather.temperature}°C`;
-        
-        // 更新天气描述
-        document.getElementById('weather-desc').textContent = `风速: ${weather.windspeed}km/h`;
-        
-        // 根据天气状况更新图标（这里简单处理，实际可以根据天气代码设置不同图标）
-        const weatherIcon = document.querySelector('#weather-icon i');
-        weatherIcon.className = 'fas fa-sun text-yellow-400'; // 示例：设置为太阳图标
-      })
-      .catch(error => {
-        console.error('获取天气失败:', error);
-        document.getElementById('weather-desc').textContent = '获取失败';
+        const w = data.current_weather;
+        document.getElementById('temperature').textContent = `${w.temperature}°C`;
+        document.getElementById('weather-desc').textContent = `风速: ${w.windspeed}km/h`;
+        setIcon(w.weathercode);
       });
-  });
+  }
+
+  // 获取城市名
+  function getCity() {
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+      .then(r => r.json())
+      .then(data => {
+        const city = data.address.city || data.address.town || data.address.village || '未知城市';
+        document.getElementById('location').textContent = city;
+      });
+  }
+
+  // 设置天气图标
+  function setIcon(code) {
+    const icon = document.querySelector('#weather-icon i');
+    icon.className = code === 0 ? 'fas fa-sun text-yellow-400' :
+                    code < 4 ? 'fas fa-cloud text-fog-400' :
+                    code < 70 ? 'fas fa-cloud-rain text-blue-400' :
+                    code < 80 ? 'fas fa-snowflake text-blue-100' :
+                    'fas fa-bolt text-yellow-500';
+  }
+});
 </script>
      <!-- 放松小工具 -->
      <div class="frosted-card p-5 aspect-square flex flex-col items-center justify-center">
