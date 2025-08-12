@@ -124,8 +124,8 @@
           data-ytextravalue="extra-acmjqxq07"
         >
           <!-- 空白小插件区域 -->
-<!-- 天气卡片结构 - 保留你的原始样式 -->
-<div class="frosted-card p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+<!-- 天气卡片 - 添加了宽度限制 -->
+<div class="frosted-card p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 max-w-md mx-auto">
   <div class="flex items-center justify-between mb-4">
     <h3 class="text-fog-600 text-sm font-medium flex items-center">
       <i class="fas fa-cloud mr-2 text-fog-400"></i>
@@ -143,11 +143,12 @@
       <div class="text-3xl font-light text-fog-800" id="temperature">
         --°C
       </div>
-      <!-- 新增神话提示行 -->
+      <!-- 优化后的神话提示区域 -->
       <div 
         id="myth-message" 
-        class="italic text-sm mt-1 transition-all duration-500 hover:scale-105 hover:text-amber-600 cursor-help"
+        class="italic text-sm mt-1 transition-all duration-500 hover:scale-105 hover:text-amber-600 cursor-help px-2"
         title="来自奥林匹斯的神谕"
+        style="max-width: 280px; line-height: 1.4;"
       >
         <i class="fas fa-temple mr-1"></i> 众神正在商议天气...
       </div>
@@ -236,8 +237,8 @@ function updateWeatherUI(weatherData, timestamp) {
   document.getElementById('weather-desc').textContent = getWeatherDesc(condition);
   document.getElementById('weather-icon').innerHTML = getWeatherIcon(condition);
   
-  // 获取神话提示
-  const mythMsg = getMythMessage(temp, condition);
+  // 获取神话提示（优化文本长度）
+  const mythMsg = getConciseMythMessage(temp, condition);
   document.getElementById('myth-message').innerHTML = `
     <i class="fas fa-temple mr-1"></i> ${mythMsg}
   `;
@@ -246,26 +247,26 @@ function updateWeatherUI(weatherData, timestamp) {
   applyTimeEffect(timestamp, weatherData.timezone);
 }
 
-// 获取神话提示
-function getMythMessage(temp, condition) {
+// 获取简洁版神话提示（避免过长）
+function getConciseMythMessage(temp, condition) {
   // 温度提示
   let tempMsg = '';
-  if (temp >= 35) tempMsg = '🔥 赫菲斯托斯的熔炉正在燃烧！记得多补水';
-  else if (temp >= 30) tempMsg = '☀️ 赫利俄斯驾着日车高悬天空，注意防晒';
-  else if (temp >= 25) tempMsg = '🌞 阿波罗的金弓散发着温暖光芒';
-  else if (temp >= 15) tempMsg = '🌸 得墨忒尔的祝福带来宜人温度';
-  else if (temp >= 5) tempMsg = '🍃 风神埃俄罗斯正在轻拂大地';
-  else tempMsg = '❄️ 北风神波瑞阿斯送来了寒意';
+  if (temp >= 35) tempMsg = '🔥 赫菲斯托斯的熔炉燃烧中';
+  else if (temp >= 30) tempMsg = '☀️ 赫利俄斯日车高悬';
+  else if (temp >= 25) tempMsg = '🌞 阿波罗的金弓温暖';
+  else if (temp >= 15) tempMsg = '🌸 得墨忒尔送来祝福';
+  else if (temp >= 5) tempMsg = '🍃 风神埃俄罗斯轻拂';
+  else tempMsg = '❄️ 北风神波瑞阿斯寒意';
 
   // 天气提示
   let conditionMsg = '';
-  if (condition >= 95) conditionMsg = '⚡ 宙斯挥舞着雷霆！请注意安全'; 
-  else if (condition >= 85) conditionMsg = '❄️ 珀耳塞福涅从冥界归来';
-  else if (condition >= 45) conditionMsg = '🌫️ 彩虹女神伊里斯的面纱笼罩大地';
-  else if (condition >= 10) conditionMsg = '🌧️ 宙斯正在降下甘露，记得带伞';
-  else conditionMsg = '☁️ 赫拉用云朵装饰着天空';
+  if (condition >= 95) conditionMsg = '⚡ 宙斯挥舞雷霆'; 
+  else if (condition >= 85) conditionMsg = '❄️ 珀耳塞福涅归来';
+  else if (condition >= 45) conditionMsg = '🌫️ 伊里斯的面纱笼罩';
+  else if (condition >= 10) conditionMsg = '🌧️ 宙斯降下甘露';
+  else conditionMsg = '☁️ 赫拉装饰天空';
 
-  return `${tempMsg} ${conditionMsg}`;
+  return `${tempMsg}·${conditionMsg}`;
 }
 
 // 日出日落特效
@@ -279,42 +280,25 @@ function applyTimeEffect(timestamp, timezone) {
   
   // 应用时间特效
   if (hours >= 6 && hours < 10) {
-    // 清晨特效
     mythElement.classList.add('text-rose-400');
     mythElement.style.textShadow = '0 0 8px rgba(255, 100, 100, 0.3)';
   } else if (hours >= 10 && hours < 17) {
-    // 白天特效
     mythElement.classList.add('text-amber-500');
     mythElement.style.textShadow = '0 0 8px rgba(255, 165, 0, 0.3)';
   } else {
-    // 夜晚特效
     mythElement.classList.add('text-indigo-400');
     mythElement.style.textShadow = '0 0 8px rgba(75, 85, 199, 0.3)';
   }
 }
 
-// 天气描述映射（示例）
+// 天气描述映射
 function getWeatherDesc(code) {
   const descriptions = {
-    0: '晴朗',
-    1: '晴间多云',
-    2: '部分多云',
-    3: '多云',
-    45: '雾',
-    48: '冻雾',
-    51: '小雨',
-    56: '冻雨',
-    61: '雨',
-    66: '冻雨',
-    71: '小雪',
-    73: '雪',
-    75: '大雪',
-    80: '阵雨',
-    81: '大雨',
-    85: '小雪',
-    86: '大雪',
-    95: '雷暴',
-    96: '雷暴伴冰雹'
+    0: '晴朗', 1: '晴间多云', 2: '部分多云', 3: '多云',
+    45: '雾', 48: '冻雾', 51: '小雨', 56: '冻雨',
+    61: '雨', 66: '冻雨', 71: '小雪', 73: '雪',
+    75: '大雪', 80: '阵雨', 81: '大雨', 85: '小雪',
+    86: '大雪', 95: '雷暴', 96: '雷暴伴冰雹'
   };
   return descriptions[code] || '神秘天气';
 }
@@ -345,11 +329,15 @@ function getWeatherIcon(code) {
   return icons[code] || '<i class="fas fa-question text-gray-400"></i>';
 }
 
-// 悬浮动画的CSS（添加到全局样式）
+// 悬浮动画的CSS
 const style = document.createElement('style');
 style.textContent = `
   #myth-message {
     transition: all 0.3s ease;
+    max-width: 280px;
+    margin: 0 auto;
+    line-height: 1.4;
+    word-break: break-word;
   }
   #myth-message:hover {
     transform: scale(1.05);
