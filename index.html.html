@@ -1,5 +1,6 @@
 <html lang="zh-CN">
   <head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>Argogo - 我的私人助手</title>
@@ -123,7 +124,7 @@
           data-ytextravalue="extra-acmjqxq07"
         >
           <!-- 空白小插件区域 -->
-<!-- 保留你的原始结构，只需修改JS部分 -->
+<!-- 天气卡片结构 - 保留你的原始样式 -->
 <div class="frosted-card p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
   <div class="flex items-center justify-between mb-4">
     <h3 class="text-fog-600 text-sm font-medium flex items-center">
@@ -136,15 +137,19 @@
   </div>
   <div class="flex items-center justify-center py-2">
     <div class="text-5xl mr-4" id="weather-icon">
-      <i class="fas fa-cloud text-fog-400"></i>
+      <i class="fas fa-spinner fa-spin text-fog-400"></i>
     </div>
     <div class="text-center">
       <div class="text-3xl font-light text-fog-800" id="temperature">
         --°C
       </div>
       <!-- 新增神话提示行 -->
-      <div class="text-amber-600 italic text-sm mt-1" id="myth-message">
-        奥林匹斯众神注视着大地...
+      <div 
+        id="myth-message" 
+        class="italic text-sm mt-1 transition-all duration-500 hover:scale-105 hover:text-amber-600 cursor-help"
+        title="来自奥林匹斯的神谕"
+      >
+        <i class="fas fa-temple mr-1"></i> 众神正在商议天气...
       </div>
       <div class="text-fog-500 text-sm mt-1" id="weather-desc">
         加载中
@@ -154,67 +159,205 @@
 </div>
 
 <script>
-// ===== 神话天气增强 =====
-// 获取天气数据
-async function fetchMythWeather() {
+// ===== 完整神话天气组件 =====
+document.addEventListener('DOMContentLoaded', initWeather);
+
+async function initWeather() {
   try {
-    const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=39.9&longitude=116.4&current_weather=true');
-    const data = await response.json();
-    updateWeatherUI(data.current_weather);
+    // 1. 获取用户位置
+    const position = await getLocation();
+    const { latitude, longitude } = position.coords;
+    
+    // 2. 显示位置信息
+    const locationName = await getLocationName(latitude, longitude);
+    document.getElementById('location').textContent = locationName;
+    
+    // 3. 获取天气数据
+    const weather = await fetchWeather(latitude, longitude);
+    updateWeatherUI(weather, position.timestamp);
+    
   } catch (error) {
-    console.error('获取天气失败:', error);
-    document.getElementById('weather-desc').textContent = '神谕暂时不可用';
+    console.error('天气初始化失败:', error);
+    document.getElementById('weather-desc').textContent = '获取天气失败';
+    document.getElementById('myth-message').innerHTML = 
+      '<i class="fas fa-exclamation-triangle mr-1"></i> 宙斯关闭了天界之门';
   }
 }
 
-// 更新界面
-function updateWeatherUI(weather) {
+// 获取地理位置
+function getLocation() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject('浏览器不支持地理位置');
+      return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+      position => resolve(position),
+      error => {
+        console.warn('获取位置失败，使用北京默认位置', error);
+        // 默认位置：北京
+        resolve({
+          coords: { latitude: 39.9042, longitude: 116.4074 },
+          timestamp: Date.now()
+        });
+      }
+    );
+  });
+}
+
+// 获取位置名称（使用OpenStreetMap反向地理编码）
+async function getLocationName(lat, lng) {
+  try {
+    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+    const data = await response.json();
+    return data.address?.city || data.address?.town || data.address?.county || '未知位置';
+  } catch {
+    return '神秘领域';
+  }
+}
+
+// 获取天气数据
+async function fetchWeather(lat, lng) {
+  const response = await fetch(
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`
+  );
+  return response.json();
+}
+
+// 更新天气界面
+function updateWeatherUI(weatherData, timestamp) {
+  const weather = weatherData.current_weather;
   const temp = weather.temperature;
   const condition = weather.weathercode;
   
   // 更新基础数据
   document.getElementById('temperature').textContent = `${temp}°C`;
   document.getElementById('weather-desc').textContent = getWeatherDesc(condition);
-  document.getElementById('weather-icon').innerHTML = `<i class="${getWeatherIcon(condition)}"></i>`;
+  document.getElementById('weather-icon').innerHTML = getWeatherIcon(condition);
   
-  // 新增神话提示
-  document.getElementById('myth-message').textContent = getMythMessage(temp, condition);
+  // 获取神话提示
+  const mythMsg = getMythMessage(temp, condition);
+  document.getElementById('myth-message').innerHTML = `
+    <i class="fas fa-temple mr-1"></i> ${mythMsg}
+  `;
+  
+  // 应用日出日落特效
+  applyTimeEffect(timestamp, weatherData.timezone);
 }
 
 // 获取神话提示
 function getMythMessage(temp, condition) {
   // 温度提示
   let tempMsg = '';
-  if (temp >= 35) tempMsg = '🔥 赫菲斯托斯的熔炉正在燃烧！记得多补水降温';
-  else if (temp >= 30) tempMsg = '☀️ 赫利俄斯驾着战车高悬天空，注意防晒';
+  if (temp >= 35) tempMsg = '🔥 赫菲斯托斯的熔炉正在燃烧！记得多补水';
+  else if (temp >= 30) tempMsg = '☀️ 赫利俄斯驾着日车高悬天空，注意防晒';
   else if (temp >= 25) tempMsg = '🌞 阿波罗的金弓散发着温暖光芒';
   else if (temp >= 15) tempMsg = '🌸 得墨忒尔的祝福带来宜人温度';
-  else if (temp >= 5) tempMsg = '🍃 风神们正在轻柔地吹拂大地';
-  else tempMsg = '❄️ 北风神波瑞阿斯带来了寒意';
+  else if (temp >= 5) tempMsg = '🍃 风神埃俄罗斯正在轻拂大地';
+  else tempMsg = '❄️ 北风神波瑞阿斯送来了寒意';
 
   // 天气提示
   let conditionMsg = '';
-  if (condition >= 95) conditionMsg = '⚡ 宙斯挥舞着雷电之矛！请注意安全'; 
-  else if (condition >= 85) conditionMsg = '❄️ 冬季女神珀耳塞福涅归来了';
-  else if (condition >= 45) conditionMsg = '🌫️ 伊里斯的面纱笼罩着大地，小心出行';
+  if (condition >= 95) conditionMsg = '⚡ 宙斯挥舞着雷霆！请注意安全'; 
+  else if (condition >= 85) conditionMsg = '❄️ 珀耳塞福涅从冥界归来';
+  else if (condition >= 45) conditionMsg = '🌫️ 彩虹女神伊里斯的面纱笼罩大地';
   else if (condition >= 10) conditionMsg = '🌧️ 宙斯正在降下甘露，记得带伞';
+  else conditionMsg = '☁️ 赫拉用云朵装饰着天空';
 
   return `${tempMsg} ${conditionMsg}`;
 }
 
-// 辅助函数（保留你原有的逻辑）
-function getWeatherDesc(code) { /* ... */ }
-function getWeatherIcon(code) { /* ... */ }
+// 日出日落特效
+function applyTimeEffect(timestamp, timezone) {
+  const date = new Date(timestamp);
+  const hours = date.getHours();
+  const mythElement = document.getElementById('myth-message');
+  
+  // 清除现有时间类
+  mythElement.classList.remove('text-amber-500', 'text-indigo-400', 'text-rose-400');
+  
+  // 应用时间特效
+  if (hours >= 6 && hours < 10) {
+    // 清晨特效
+    mythElement.classList.add('text-rose-400');
+    mythElement.style.textShadow = '0 0 8px rgba(255, 100, 100, 0.3)';
+  } else if (hours >= 10 && hours < 17) {
+    // 白天特效
+    mythElement.classList.add('text-amber-500');
+    mythElement.style.textShadow = '0 0 8px rgba(255, 165, 0, 0.3)';
+  } else {
+    // 夜晚特效
+    mythElement.classList.add('text-indigo-400');
+    mythElement.style.textShadow = '0 0 8px rgba(75, 85, 199, 0.3)';
+  }
+}
 
-// 初始化
-document.addEventListener('DOMContentLoaded', fetchMythWeather);
+// 天气描述映射（示例）
+function getWeatherDesc(code) {
+  const descriptions = {
+    0: '晴朗',
+    1: '晴间多云',
+    2: '部分多云',
+    3: '多云',
+    45: '雾',
+    48: '冻雾',
+    51: '小雨',
+    56: '冻雨',
+    61: '雨',
+    66: '冻雨',
+    71: '小雪',
+    73: '雪',
+    75: '大雪',
+    80: '阵雨',
+    81: '大雨',
+    85: '小雪',
+    86: '大雪',
+    95: '雷暴',
+    96: '雷暴伴冰雹'
+  };
+  return descriptions[code] || '神秘天气';
+}
+
+// 天气图标映射
+function getWeatherIcon(code) {
+  const icons = {
+    0: '<i class="fas fa-sun text-yellow-400"></i>',
+    1: '<i class="fas fa-cloud-sun text-yellow-300"></i>',
+    2: '<i class="fas fa-cloud text-gray-300"></i>',
+    3: '<i class="fas fa-cloud text-gray-400"></i>',
+    45: '<i class="fas fa-smog text-gray-200"></i>',
+    48: '<i class="fas fa-smog text-gray-200"></i>',
+    51: '<i class="fas fa-cloud-rain text-blue-300"></i>',
+    56: '<i class="fas fa-icicles text-blue-100"></i>',
+    61: '<i class="fas fa-cloud-showers-heavy text-blue-400"></i>',
+    66: '<i class="fas fa-icicles text-blue-100"></i>',
+    71: '<i class="fas fa-snowflake text-blue-100"></i>',
+    73: '<i class="fas fa-snowflake text-blue-100"></i>',
+    75: '<i class="fas fa-snowplow text-blue-50"></i>',
+    80: '<i class="fas fa-poo-storm text-purple-400"></i>',
+    81: '<i class="fas fa-cloud-showers-heavy text-blue-500"></i>',
+    85: '<i class="fas fa-snowflake text-blue-100"></i>',
+    86: '<i class="fas fa-snowplow text-blue-50"></i>',
+    95: '<i class="fas fa-bolt text-yellow-300"></i>',
+    96: '<i class="fas fa-poo-storm text-purple-500"></i>'
+  };
+  return icons[code] || '<i class="fas fa-question text-gray-400"></i>';
+}
+
+// 悬浮动画的CSS（添加到全局样式）
+const style = document.createElement('style');
+style.textContent = `
+  #myth-message {
+    transition: all 0.3s ease;
+  }
+  #myth-message:hover {
+    transform: scale(1.05);
+    text-shadow: 0 0 10px currentColor;
+  }
+`;
+document.head.appendChild(style);
 </script>
-          <!-- 放松小工具 -->
-          <div
-            class="frosted-card p-5 aspect-square flex flex-col items-center justify-center transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
-          >
-            <h3 class="text-fog-600 text-sm font-medium mb-4 flex items-center">
-              <i class="fas fa-heart mr-2 text-fog-400"> </i>
               放松小工具
             </h3>
             <div
